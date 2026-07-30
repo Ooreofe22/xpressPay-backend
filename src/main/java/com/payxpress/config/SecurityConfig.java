@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/webhooks/**").permitAll()
+                        .requestMatchers("/auth/**", "/webhooks/**", "/signup/**").permitAll()
                         // browse-only endpoints — public catalog + payment status check by reference
                         .requestMatchers(HttpMethod.GET, "/billers", "/billers/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/billers/payments/verify/*").permitAll()
