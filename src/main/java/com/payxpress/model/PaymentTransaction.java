@@ -48,7 +48,7 @@ public class PaymentTransaction {
     private String billerCategoryPath;
     private String billerUniqueCode;
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String billerDetailsJson;
 
     private String billerResponseCode;
