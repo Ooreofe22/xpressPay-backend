@@ -39,6 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**", "/webhooks/**").permitAll()
                         // browse-only endpoints — public catalog + payment status check by reference
+                        .requestMatchers("/billers/beneficiaries", "/billers/beneficiaries/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/billers", "/billers/*").permitAll()
                         .requestMatchers(HttpMethod.GET, "/billers/payments/verify/*").permitAll()
                         // everything else under /billers/** (initiate, history, validate) needs a valid JWT
