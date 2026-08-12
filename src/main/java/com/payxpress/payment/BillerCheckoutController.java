@@ -71,8 +71,16 @@ public class BillerCheckoutController {
                 "internal_request_id", txn.getInternalRequestId()
         );
 
-        Map<String, Object> paystackResponse = paystackService.initializeTransaction(
-                email, request.amount(), txn.getInternalRequestId(), metadata);
+        Map<String, Object> paystackResponse;
+        try {
+            paystackResponse = paystackService.initializeTransaction(
+                    email, request.amount(), txn.getInternalRequestId(), metadata);
+        } catch (PaystackUnavailableException e) {
+            txn.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(txn);
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", "Could not initialize payment, unfortunately"));
+        }
+
 
         if (!Boolean.TRUE.equals(paystackResponse.get("status"))) {
             txn.setStatus(TransactionStatus.FAILED);

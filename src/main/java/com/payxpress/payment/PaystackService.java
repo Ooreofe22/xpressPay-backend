@@ -44,6 +44,7 @@ public class PaystackService {
                 "metadata", metadata
         );
 
+           try {
         return webClient.post()
                 .uri("/transaction/initialize")
                 .header("Authorization", "Bearer " + secretKey)
@@ -51,7 +52,10 @@ public class PaystackService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
-    }
+    } catch (Exception e) {
+               throw new PaystackUnavailableException("Paystack call failed", e);
+           }
+           }
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> verifyTransaction(String reference) {
