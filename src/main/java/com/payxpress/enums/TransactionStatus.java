@@ -1,4 +1,4 @@
-package com.payxpress.model;
+package com.payxpress.enums;
 
 public enum TransactionStatus {
     PENDING_PAYMENT,

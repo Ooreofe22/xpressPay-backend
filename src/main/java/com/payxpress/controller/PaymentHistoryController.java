@@ -1,7 +1,8 @@
-package com.payxpress.payment;
+package com.payxpress.controller;
 
 import com.payxpress.model.PaymentTransaction;
 import com.payxpress.model.User;
+import com.payxpress.service.PaymentConfirmationService;
 import com.payxpress.repository.PaymentTransactionRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;

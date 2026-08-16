@@ -1,5 +1,7 @@
-package com.payxpress.biller;
+package com.payxpress.service;
 
+import com.payxpress.biller.BillerApiClient;
+import com.payxpress.biller.FulfilResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;

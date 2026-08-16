@@ -19,7 +19,7 @@ public class OtpCode {
     private String id = UUID.randomUUID().toString();
 
     @Column(nullable = false)
-    private String phone;
+    private String email;
 
     @Column(nullable = false)
     private String codeHash;

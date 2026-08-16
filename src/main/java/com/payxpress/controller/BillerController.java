@@ -1,4 +1,4 @@
-package com.payxpress.biller;
+package com.payxpress.controller;
 
 import com.payxpress.model.Biller;
 import com.payxpress.repository.BillerRepository;

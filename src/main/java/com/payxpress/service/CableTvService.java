@@ -1,5 +1,8 @@
-package com.payxpress.biller;
+package com.payxpress.service;
 
+import com.payxpress.biller.BillerApiClient;
+import com.payxpress.biller.CableFulfilResponse;
+import com.payxpress.biller.CableValidateResponse;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,8 +30,8 @@ public class CableTvService {
 
     // name/accountType/amount all come from validate() and must be carried through checkout
     public CableFulfilResponse fulfil(String internalRequestId, String uniqueCode, String accountNumber,
-                                       String accountType, int noOfMonth, BigDecimal amount,
-                                       String name, String phoneNumber) {
+                                      String accountType, int noOfMonth, BigDecimal amount,
+                                      String name, String phoneNumber) {
         Map<String, Object> details = new HashMap<>();
         details.put("accountNumber", accountNumber);
         details.put("accountType", accountType);

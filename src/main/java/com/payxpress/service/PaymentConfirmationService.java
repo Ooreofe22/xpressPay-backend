@@ -1,4 +1,4 @@
-package com.payxpress.payment;
+package com.payxpress.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payxpress.biller.BillerFulfilDispatcher;
 import com.payxpress.biller.FulfilOutcome;
 import com.payxpress.model.PaymentTransaction;
-import com.payxpress.model.TransactionStatus;
+import com.payxpress.enums.TransactionStatus;
 import com.payxpress.repository.PaymentTransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

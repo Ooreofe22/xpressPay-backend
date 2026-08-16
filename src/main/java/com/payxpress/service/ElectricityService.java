@@ -1,5 +1,8 @@
-package com.payxpress.biller;
+package com.payxpress.service;
 
+import com.payxpress.biller.BillerApiClient;
+import com.payxpress.biller.ElectricityFulfilResponse;
+import com.payxpress.biller.ElectricityValidateResponse;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,8 +30,8 @@ public class ElectricityService {
 
     // name/address come from validateMeter() and must be carried through checkout
     public ElectricityFulfilResponse fulfil(String internalRequestId, String uniqueCode,
-                                             String accountNumber, String accountType, BigDecimal amount,
-                                             String name, String address) {
+                                            String accountNumber, String accountType, BigDecimal amount,
+                                            String name, String address) {
         Map<String, Object> details = new HashMap<>();
         details.put("accountNumber", accountNumber);
         details.put("accountType", accountType);

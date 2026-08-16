@@ -1,5 +1,7 @@
-package com.payxpress.biller;
+package com.payxpress.service;
 
+import com.payxpress.biller.BillerApiClient;
+import com.payxpress.biller.FulfilResponse;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,7 +17,7 @@ public class AirtimeDataService {
     }
 
     public FulfilResponse fulfil(String categoryPath, String internalRequestId, String uniqueCode,
-                                  String phoneNumber, BigDecimal amount) {
+                                 String phoneNumber, BigDecimal amount) {
         Map<String, Object> body = Map.of(
                 "requestId", internalRequestId,
                 "uniqueCode", uniqueCode,

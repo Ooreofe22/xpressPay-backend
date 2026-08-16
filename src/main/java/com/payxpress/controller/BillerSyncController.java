@@ -1,5 +1,6 @@
-package com.payxpress.biller;
+package com.payxpress.controller;
 
+import com.payxpress.service.BillerSyncService;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

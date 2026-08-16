@@ -22,7 +22,7 @@ public class JwtService {
     public String issueAccessToken(User user) {
         return Jwts.builder()
                 .subject(user.getId())
-                .claim("phone", user.getPhone())
+                .claim("email", user.getEmail())
                 .issuedAt(new Date())
                 .expiration(Date.from(Instant.now().plus(ACCESS_TOKEN_MINUTES, ChronoUnit.MINUTES)))
                 .signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8)))

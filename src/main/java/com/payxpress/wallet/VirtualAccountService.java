@@ -31,7 +31,7 @@ public class VirtualAccountService {
             account.setUser(user);
             account.setBankName(bank);
             account.setAccountNumber(generateAccountNumber());
-            account.setAccountName("PAYXPRESS-" + user.getPhone().replace("+234", "0"));
+            account.setAccountName("PAYXPRESS-" + user.getEmail());
             repository.save(account);
         }
     }

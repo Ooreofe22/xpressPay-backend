@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface OtpCodeRepository extends JpaRepository<OtpCode, String> {
-    Optional<OtpCode> findTopByPhoneAndPurposeOrderByCreatedAtDesc(String phone, OtpPurpose purpose);
-    Optional<OtpCode> findTopByPhoneAndPurposeAndConsumedFalseOrderByCreatedAtDesc(String phone, OtpPurpose purpose);
+    Optional<OtpCode> findTopByEmailAndPurposeOrderByCreatedAtDesc(String email, OtpPurpose purpose);
+    Optional<OtpCode> findTopByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(String email, OtpPurpose purpose);
 }

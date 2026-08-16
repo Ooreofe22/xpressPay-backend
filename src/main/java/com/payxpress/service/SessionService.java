@@ -1,4 +1,4 @@
-package com.payxpress.auth;
+package com.payxpress.service;
 
 import com.payxpress.model.User;
 import com.payxpress.model.UserSession;

@@ -45,6 +45,9 @@ public class PaymentTransaction {
     @Enumerated(EnumType.STRING)
     private TransactionStatus status;
 
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod = PaymentMethod.GATEWAY;
+
     private String billerCategoryPath;
     private String billerUniqueCode;
 

@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -19,9 +20,12 @@ public class User {
     private String id = UUID.randomUUID().toString();
 
     @Column(unique = true, nullable = false)
-    private String phone; // E.164, e.g. "+2348012345678"
+    private String email;
 
     private String bvn; // 11 digits, format-checked only
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal balance = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.PENDING_VERIFICATION;

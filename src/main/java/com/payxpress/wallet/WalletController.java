@@ -1,12 +1,13 @@
 package com.payxpress.wallet;
 
+import com.payxpress.model.PaymentTransaction;
 import com.payxpress.model.User;
 import com.payxpress.model.VirtualAccount;
 import com.payxpress.repository.VirtualAccountRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,16 +18,17 @@ import java.util.Map;
 public class WalletController {
 
     private final VirtualAccountRepository virtualAccountRepository;
+    private final WalletDebitService walletDebitService;
 
-    public WalletController(VirtualAccountRepository virtualAccountRepository) {
+    public WalletController(VirtualAccountRepository virtualAccountRepository, WalletDebitService walletDebitService) {
         this.virtualAccountRepository = virtualAccountRepository;
+        this.walletDebitService = walletDebitService;
     }
 
     @GetMapping("/balance")
-    public Map<String, Object> balance() {
-        // intentionally always zero — no internal ledger exists;
-        // all payments route through Paystack, never debit anything here
-        return Map.of("balance", BigDecimal.ZERO, "currency", "NGN");
+    public Map<String, Object> balance(Authentication auth) {
+        User user = (User) auth.getPrincipal();
+        return Map.of("balance", user.getBalance(), "currency", "NGN");
     }
 
     @GetMapping("/accounts")
@@ -34,6 +36,30 @@ public class WalletController {
         User user = (User) auth.getPrincipal();
         return virtualAccountRepository.findByUser(user).stream().map(AccountView::from).toList();
     }
+
+    // "Pay with Balance" - atomic debit, single-attempt fulfilment, refund on clean decline
+    @PostMapping("/debits/bill-payment")
+    public ResponseEntity<?> payBillFromWallet(@RequestBody WalletDebitRequest request, Authentication auth) {
+        User user = (User) auth.getPrincipal();
+
+        PaymentTransaction txn = walletDebitService.payBillFromBalance(
+                user.getId(), request.uniqueCode(), request.categoryPath(), request.amount(), request.details());
+
+        boolean success = txn.getStatus().name().equals("FULFILLED");
+        HttpStatus status = success ? HttpStatus.OK : HttpStatus.UNPROCESSABLE_ENTITY;
+
+        return ResponseEntity.status(status).body(Map.of(
+                "transactionId", txn.getId(),
+                "status", txn.getStatus().name(),
+                "xpressReferenceId", txn.getXpressReferenceId() == null ? "" : txn.getXpressReferenceId(),
+                "billerResponseMessage", txn.getBillerResponseMessage() == null ? "" : txn.getBillerResponseMessage(),
+                "amount", txn.getAmount(),
+                "newBalance", user.getBalance()
+        ));
+    }
+
+    public record WalletDebitRequest(String uniqueCode, String categoryPath, BigDecimal amount,
+                                      Map<String, Object> details) {}
 
     public record AccountView(String bankName, String accountNumber, String accountName) {
         static AccountView from(VirtualAccount va) {

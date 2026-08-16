@@ -1,5 +1,6 @@
-package com.payxpress.payment;
+package com.payxpress.service;
 
+import com.payxpress.exception.PaystackUnavailableException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;

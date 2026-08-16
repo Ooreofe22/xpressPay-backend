@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,4 +21,8 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     Optional<PaymentTransaction> findByPaystackReference(String reference);
 
     List<PaymentTransaction> findByUserOrderByCreatedAtDesc(User user);
+
+    List<PaymentTransaction> findByAmountGreaterThanOrderByCreatedAtDesc(BigDecimal amount);
+
+    List<PaymentTransaction> findByUserAndAmountGreaterThanOrderByCreatedAtDesc(User user, BigDecimal amount);
 }

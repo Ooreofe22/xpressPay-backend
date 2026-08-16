@@ -1,5 +1,8 @@
-package com.payxpress.biller;
+package com.payxpress.service;
 
+import com.payxpress.biller.BillerApiClient;
+import com.payxpress.biller.BillerListRequest;
+import com.payxpress.biller.BillerListResponse;
 import com.payxpress.model.Biller;
 import com.payxpress.repository.BillerRepository;
 import org.springframework.stereotype.Service;
