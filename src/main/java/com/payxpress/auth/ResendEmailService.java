@@ -1,13 +1,19 @@
 package com.payxpress.auth;
 
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -34,7 +40,18 @@ public class ResendEmailService implements EmailService {
             @Value("${resend.from}") String from) {
         this.apiKey = apiKey;
         this.from = from;
-        this.webClient = WebClient.builder().baseUrl(RESEND_API_URL).build();
+
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5_000)
+                .responseTimeout(Duration.ofSeconds(10))
+                .doOnConnected(conn -> conn
+                        .addHandlerLast(new ReadTimeoutHandler(10))
+                        .addHandlerLast(new WriteTimeoutHandler(10)));
+
+        this.webClient = WebClient.builder()
+                .baseUrl(RESEND_API_URL)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .build();
     }
 
     @Override
