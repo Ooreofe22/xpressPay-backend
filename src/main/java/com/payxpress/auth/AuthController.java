@@ -22,6 +22,7 @@ public class AuthController {
 
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    private static final Pattern BVN_PATTERN = Pattern.compile("^\\d{11}$");
 
     private final OtpService otpService;
     private final SessionService sessionService;
@@ -41,55 +42,48 @@ public class AuthController {
         this.virtualAccountService = virtualAccountService;
     }
 
-    // Step 1 of 2 - email screen, sends OTP
+    // Signup — single screen collects email + BVN. This sends the OTP; the BVN
+    // is format-checked here but not persisted until verify-otp succeeds, so a
+    // wrong/unverified email never leaves a half-created account behind.
     @PostMapping("/signup/request-otp")
     public ResponseEntity<?> requestSignupOtp(@RequestBody Map<String, String> body) {
         String email = normalizeEmail(body.get("email"));
+        String bvn = body.get("bvn");
+
+        if (bvn == null || !BVN_PATTERN.matcher(bvn).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "BVN must be 11 digits"));
+        }
         if (userRepository.existsByEmail(email)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email already registered"));
         }
+
         otpService.generateAndSend(email, OtpPurpose.SIGNUP);
         return ResponseEntity.ok(Map.of("message", "OTP sent"));
     }
 
-    // Step 1 of 2 - OTP screen. Verifies the code and pre-creates a PENDING_VERIFICATION
-    // user so step 2 (BVN) has something to attach to. No tokens issued yet.
+    // Signup — verify OTP. This is now the ONE step that finishes signup:
+    // verifies the code, creates + activates the user, saves the BVN, seeds
+    // the wallet bonus, generates virtual accounts, and issues tokens.
     @PostMapping("/signup/verify-otp")
     @Transactional
-    public ResponseEntity<?> verifySignupOtp(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> verifySignupOtp(@RequestBody Map<String, String> body,
+                                              @RequestHeader(value = "User-Agent", required = false) String userAgent) {
         String email = normalizeEmail(body.get("email"));
+        String bvn = body.get("bvn");
         String otp = body.get("otp");
 
+        if (bvn == null || !BVN_PATTERN.matcher(bvn).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "BVN must be 11 digits"));
+        }
         if (!otpService.verify(email, OtpPurpose.SIGNUP, otp)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid code"));
         }
-
-        User user = userRepository.findByEmail(email).orElseGet(() -> {
-            User u = new User();
-            u.setEmail(email);
-            u.setStatus(UserStatus.PENDING_VERIFICATION);
-            return u;
-        });
-        userRepository.save(user);
-
-        return ResponseEntity.ok(Map.of("message", "Email verified", "email", email));
-    }
-
-    // Step 2 of 2 - BVN screen (format-check only, no real BVN verification).
-    // Activates the account, seeds the test wallet balance, and issues tokens.
-    @PostMapping("/signup/bvn")
-    @Transactional
-    public ResponseEntity<?> submitBvn(@RequestBody Map<String, String> body,
-                                        @RequestHeader(value = "User-Agent", required = false) String userAgent) {
-        String email = normalizeEmail(body.get("email"));
-        String bvn = body.get("bvn");
-        if (bvn == null || !bvn.matches("\\d{11}")) {
-            return ResponseEntity.badRequest().body(Map.of("message", "BVN must be 11 digits"));
+        if (userRepository.existsByEmail(email)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email already registered"));
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Verify your email first"));
-
+        User user = new User();
+        user.setEmail(email);
         user.setBvn(bvn);
         user.setStatus(UserStatus.ACTIVE);
         user.setBalance(signupBonus);
