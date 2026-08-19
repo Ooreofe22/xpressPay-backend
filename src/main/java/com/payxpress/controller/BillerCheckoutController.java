@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payxpress.model.Biller;
 import com.payxpress.model.PaymentTransaction;
-import com.payxpress.enums.TransactionStatus;
 import com.payxpress.model.User;
 import com.payxpress.service.PaystackService;
 import com.payxpress.repository.BillerRepository;

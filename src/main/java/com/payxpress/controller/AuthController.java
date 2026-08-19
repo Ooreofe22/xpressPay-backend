@@ -2,9 +2,7 @@ package com.payxpress.controller;
 
 import com.payxpress.service.OtpService;
 import com.payxpress.service.SessionService;
-import com.payxpress.enums.OtpPurpose;
 import com.payxpress.model.User;
-import com.payxpress.enums.UserStatus;
 import com.payxpress.repository.UserRepository;
 import com.payxpress.security.JwtService;
 import com.payxpress.wallet.VirtualAccountService;

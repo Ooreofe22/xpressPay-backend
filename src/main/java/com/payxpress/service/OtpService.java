@@ -1,7 +1,6 @@
 package com.payxpress.service;
 
 import com.payxpress.model.OtpCode;
-import com.payxpress.enums.OtpPurpose;
 import com.payxpress.repository.OtpCodeRepository;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Service;
