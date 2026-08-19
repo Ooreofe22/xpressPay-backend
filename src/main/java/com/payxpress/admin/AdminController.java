@@ -1,8 +1,11 @@
 package com.payxpress.admin;
 
+import com.payxpress.model.Biller;
 import com.payxpress.model.PaymentTransaction;
+import com.payxpress.model.TransactionStatus;
 import com.payxpress.model.User;
 import com.payxpress.model.UserStatus;
+import com.payxpress.repository.BillerRepository;
 import com.payxpress.repository.PaymentTransactionRepository;
 import com.payxpress.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,13 +32,16 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final PaymentTransactionRepository transactionRepository;
+    private final BillerRepository billerRepository;
 
     @Value("${admin.api-key:changeme-admin-key}")
     private String adminApiKey;
 
-    public AdminController(UserRepository userRepository, PaymentTransactionRepository transactionRepository) {
+    public AdminController(UserRepository userRepository, PaymentTransactionRepository transactionRepository,
+                            BillerRepository billerRepository) {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.billerRepository = billerRepository;
     }
 
     @GetMapping("/accounts")
@@ -103,6 +109,62 @@ public class AdminController {
         return ResponseEntity.ok(flagged.stream().map(FlaggedTransactionView::from).toList());
     }
 
+    @GetMapping("/stats")
+    public ResponseEntity<?> stats(@RequestHeader("X-Admin-Key") String key) {
+        if (!checkKey(key)) return unauthorized();
+
+        List<PaymentTransaction> all = transactionRepository.findAllByOrderByCreatedAtDesc();
+        long fulfilled = all.stream().filter(t -> t.getStatus() == TransactionStatus.FULFILLED).count();
+        BigDecimal volume = all.stream()
+                .filter(t -> t.getStatus() == TransactionStatus.FULFILLED)
+                .map(PaymentTransaction::getAmount)
+                .filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return ResponseEntity.ok(new AdminStats(
+                userRepository.count(),
+                all.size(),
+                volume,
+                fulfilled,
+                transactionRepository.countByStatus(TransactionStatus.NEEDS_RECONCILIATION),
+                transactionRepository.countByStatus(TransactionStatus.FAILED),
+                billerRepository.findAll().stream().filter(Biller::isActive).count()
+        ));
+    }
+
+    @GetMapping("/transactions")
+    public ResponseEntity<?> listTransactions(@RequestHeader("X-Admin-Key") String key) {
+        if (!checkKey(key)) return unauthorized();
+        return ResponseEntity.ok(transactionRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(AdminTransactionView::from).toList());
+    }
+
+    @GetMapping("/transactions/reconciliation")
+    public ResponseEntity<?> listNeedsReconciliation(@RequestHeader("X-Admin-Key") String key) {
+        if (!checkKey(key)) return unauthorized();
+        return ResponseEntity.ok(transactionRepository
+                .findByStatusOrderByCreatedAtDesc(TransactionStatus.NEEDS_RECONCILIATION).stream()
+                .map(AdminTransactionView::from).toList());
+    }
+
+    @GetMapping("/billers")
+    public ResponseEntity<?> listBillers(@RequestHeader("X-Admin-Key") String key) {
+        if (!checkKey(key)) return unauthorized();
+        return ResponseEntity.ok(billerRepository.findAll().stream().map(AdminBillerView::from).toList());
+    }
+
+    @PatchMapping("/billers/{id}")
+    public ResponseEntity<?> setBillerActive(@PathVariable String id, @RequestBody Map<String, Boolean> body,
+                                              @RequestHeader("X-Admin-Key") String key) {
+        if (!checkKey(key)) return unauthorized();
+        Biller biller = billerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Biller not found"));
+        Boolean active = body.get("active");
+        if (active != null) biller.setActive(active);
+        billerRepository.save(biller);
+        return ResponseEntity.ok(AdminBillerView.from(biller));
+    }
+
     private boolean checkKey(String provided) {
         return adminApiKey.equals(provided);
     }
@@ -124,6 +186,39 @@ public class AdminController {
         static FlaggedTransactionView from(PaymentTransaction t) {
             return new FlaggedTransactionView(t.getId(), t.getUser().getEmail(), t.getAmount(),
                     t.getStatus().name(), t.getBillerUniqueCode(), t.getCreatedAt());
+        }
+    }
+
+    public record AdminStats(long totalUsers, long totalTransactions, java.math.BigDecimal totalVolume,
+                              long fulfilledCount, long reconciliationCount, long failedCount,
+                              long activeBillerCount) {
+    }
+
+    public record AdminTransactionView(String id, String userEmail, java.math.BigDecimal amount, String status,
+                                        String paymentMethod, String billerUniqueCode, String billerCategoryPath,
+                                        String paystackReference, java.time.Instant createdAt,
+                                        java.time.Instant updatedAt) {
+        static AdminTransactionView from(PaymentTransaction t) {
+            return new AdminTransactionView(
+                    t.getId(),
+                    t.getUser() != null ? t.getUser().getEmail() : null,
+                    t.getAmount(),
+                    t.getStatus() != null ? t.getStatus().name() : null,
+                    t.getPaymentMethod() != null ? t.getPaymentMethod().name() : null,
+                    t.getBillerUniqueCode(),
+                    t.getBillerCategoryPath(),
+                    t.getPaystackReference(),
+                    t.getCreatedAt(),
+                    t.getUpdatedAt()
+            );
+        }
+    }
+
+    public record AdminBillerView(String id, String uniqueCode, String name, String categoryPath,
+                                   boolean active, java.time.Instant lastSyncedAt) {
+        static AdminBillerView from(Biller b) {
+            return new AdminBillerView(b.getId(), b.getUniqueCode(), b.getName(), b.getCategoryPath(),
+                    b.isActive(), b.getLastSyncedAt());
         }
     }
 }

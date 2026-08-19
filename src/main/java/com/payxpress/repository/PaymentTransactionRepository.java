@@ -1,6 +1,7 @@
 package com.payxpress.repository;
 
 import com.payxpress.model.PaymentTransaction;
+import com.payxpress.model.TransactionStatus;
 import com.payxpress.model.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +26,10 @@ public interface PaymentTransactionRepository extends JpaRepository<PaymentTrans
     List<PaymentTransaction> findByAmountGreaterThanOrderByCreatedAtDesc(BigDecimal amount);
 
     List<PaymentTransaction> findByUserAndAmountGreaterThanOrderByCreatedAtDesc(User user, BigDecimal amount);
+
+    List<PaymentTransaction> findAllByOrderByCreatedAtDesc();
+
+    List<PaymentTransaction> findByStatusOrderByCreatedAtDesc(TransactionStatus status);
+
+    long countByStatus(TransactionStatus status);
 }

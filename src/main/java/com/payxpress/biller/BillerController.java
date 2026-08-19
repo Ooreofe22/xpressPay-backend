@@ -22,12 +22,16 @@ public class BillerController {
 
     @GetMapping
     public List<BillerSummary> listAll() {
-        return billerRepository.findAll().stream().map(BillerSummary::from).toList();
+        return billerRepository.findAll().stream()
+                .filter(Biller::isActive)
+                .map(BillerSummary::from).toList();
     }
 
     @GetMapping("/{categoryPath}")
     public List<BillerSummary> listByCategory(@PathVariable String categoryPath) {
-        return billerRepository.findByCategoryPath(categoryPath).stream().map(BillerSummary::from).toList();
+        return billerRepository.findByCategoryPath(categoryPath).stream()
+                .filter(Biller::isActive)
+                .map(BillerSummary::from).toList();
     }
 
     public record BillerSummary(String uniqueCode, String name, String categoryPath, boolean requiresValidate,

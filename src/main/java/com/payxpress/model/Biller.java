@@ -35,4 +35,7 @@ public class Biller {
     private String imageUrl;
 
     private Instant lastSyncedAt;
+
+    /** Admin toggle — disabled billers are hidden from the public catalog going forward. */
+    private boolean active = true;
 }
