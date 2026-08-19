@@ -1,9 +1,0 @@
-target/
-.idea/
-*.iml
-.env
-.env.local
-application-prod.properties
-application-secrets.properties
-*.log
-.DS_Store
