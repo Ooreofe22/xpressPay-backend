@@ -215,10 +215,10 @@ public class AdminController {
     }
 
     public record AdminBillerView(String id, String uniqueCode, String name, String categoryPath,
-                                   boolean active, java.time.Instant lastSyncedAt) {
+                                   boolean active, java.time.Instant lastSyncedAt, String imageUrl) {
         static AdminBillerView from(Biller b) {
             return new AdminBillerView(b.getId(), b.getUniqueCode(), b.getName(), b.getCategoryPath(),
-                    b.isActive(), b.getLastSyncedAt());
+                    b.isActive(), b.getLastSyncedAt(), b.getImageUrl());
         }
     }
 }
