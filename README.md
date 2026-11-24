@@ -1,124 +1,81 @@
-# PayXpress Biller Services API
+# PayXpress API
 
-This is a full assembly of everything designed across our conversation: passwordless auth,
-biller catalog + validation + fulfil (airtime, data, electricity, cable, WAEC PIN), Paystack
-checkout with a race-guarded confirmation flow, decorative virtual accounts, and global
-exception handling.
+The backend for **PayXpress**, a Nigerian bill payments and wallet app. Live at **[paypei.online](https://paypei.online)**.
 
-## ⚠️ What has and hasn't been verified
+It handles sign up and login with one time codes, wallets, the biller catalogue, and paying for airtime, data, electricity, cable TV and exam PINs through Paystack checkout. Each biller request is signed with HMAC SHA512.
 
-**Verified:**
-- Every `.java` file has balanced braces (a crude but real syntax sanity check)
-- Package structure is internally consistent — imports reference real classes within this project
+Web app repo: [XpressPay](https://github.com/Ooreofe22/XpressPay) (Next.js).
 
-**NOT verified — my sandbox has no Maven and no internet access:**
-- This has never been compiled. `mvn compile` has never actually run against this code.
-- No dependency resolution has happened — `pom.xml` versions are believed-correct, not tested.
-- No database, no real XpressPay/Paystack calls, nothing has executed.
+## Highlights
 
-**First thing to do:** open this in IntelliJ as a Maven project and try to build it. Send me
-whatever errors come back — that's the fastest way to get this actually working, rather than
-me guessing blind from here.
+- **Pays out exactly once.** A payment can be confirmed by the Paystack webhook *and* by the user's redirect. Both paths go through one confirmation service that locks the transaction row (`SELECT ... FOR UPDATE`) and only moves a payment out of `PENDING_PAYMENT` once. If the alert arrives twice, the second one does nothing.
+- **Signed requests.** Every call to the biller API is signed with HMAC SHA512, and every Paystack webhook signature is checked before it is trusted.
+- **Passwordless auth.** One time codes by SMS or email, short lived JWT access tokens and refresh tokens, one active session per user.
+- **Customer validation** for electricity meters and cable smart cards before the user pays.
+- **Admin endpoints** for the dashboard: transactions, accounts, billers and reconciliation.
+- **Global error handling** so every error comes back as clean JSON.
 
-## Update: AuthController now returns userId + phone
+## Tech stack
 
-`issueTokens()` response now includes `userId` and `phone` alongside `accessToken`/
-`refreshToken`. Needed once the frontend was wired for real — there was previously no
-way to build a `User` object client-side after login/signup without decoding the JWT.
-
-## Bugs found and fixed during self-audit (after the first zip)
-
-Before starting real work on this, I went back through every file and checked it against
-everything we'd actually designed in conversation — not just assumed it was all there
-correctly. Found and fixed three real issues:
-
-1. **`SecurityConfig` had `"/billers/**"` in `permitAll()`**, which accidentally also
-   covered `/billers/payments/initiate` and `/billers/payments/history` — both of which do
-   `(User) auth.getPrincipal()`. An unauthenticated request would have caused a
-   `NullPointerException` instead of a clean 401. Fixed with precise `HttpMethod.GET`
-   matchers for the browse/verify endpoints only; everything else under `/billers/**`
-   now correctly requires a JWT.
-
-2. **The verify-on-redirect endpoint (`GET /billers/payments/verify/{reference}`) never
-   actually called `confirmationService.confirmPayment()`** — it just read whatever was
-   already in the DB. This silently broke half the race-guard design: if Paystack's
-   webhook was slow or never arrived, this endpoint would report `PENDING_PAYMENT`
-   forever instead of actively resolving it. Fixed — it now calls `confirmPayment()`
-   first (safe to call twice; the PENDING_PAYMENT guard + row lock make it a no-op if
-   the webhook already handled it) before reporting status.
-
-3. **`BillerSyncService.syncAllBillers()` was written but never called anywhere.** The
-   `Biller` table would have stayed empty forever with no way to populate it. Added
-   `BillerSyncController` (`POST /admin/billers/sync`) as a manual trigger — flagged in
-   its own comment as needing real admin-role protection before production.
-
-4. **`paystack.callback.url` was defined in config but never sent to Paystack** —
-   `initializeTransaction()` didn't include `callback_url` in the request body at all,
-   so Paystack would've silently fallen back to whatever default redirect is set in the
-   dashboard instead of your app's actual callback. Fixed.
-
-## Known reconciliation points with your real repo
-
-1. **`PaystackService.java` is a reconstruction, not your real one.** I read your actual
-   `PaystackService` earlier in our conversation but don't have its exact contents anymore.
-   This version matches the shape we discussed (`initializeTransaction`, `verifyTransaction`,
-   plus the `verifyWebhookSignature` method that was missing from the original — your webhook
-   handler wasn't actually checking signatures before). **Diff this against your real class**
-   before replacing it — field names, exact method signatures, and any extra logic your
-   original had may not match.
-
-2. **`application.properties` uses env var placeholders** (`${PAYSTACK_SECRET_KEY}`, etc.)
-   instead of literal values. Fill in `.env.example` → rename to `.env` (or configure IntelliJ
-   run config env vars directly) with your real test keys. **Never commit real keys** — this
-   is the same issue as the live Paystack key that was exposed earlier.
-
-3. **The Dockerfile references `./mvnw`**, which doesn't exist yet in this zip (no network
-   here to generate the wrapper jar). Run `mvn -N wrapper:wrapper` locally once you have
-   Maven, or just build via IntelliJ's Maven integration for now.
-
-4. **Category path mappings in `BillerPaths.java` / `BillerSyncService.java`** are confirmed
-   for airtime, data, electricity, cable, and WAEC PIN specifically (pulled from your real
-   Postman collection export). Betting, insurance, JAMB, NECO, and NABTECH are NOT implemented
-   — out of scope per your "main stuff only" call.
-
-5. **`User.getEmail()` doesn't exist** — `BillerCheckoutController` currently fabricates a
-   placeholder email (`{phone}@payxpress.ng`) for Paystack's `initializeTransaction()`. Decide
-   if you want a real email field on `User`, or if the placeholder is fine long-term.
-
-## What's deliberately NOT built yet
-
-- Real SMS provider — `MockSmsService` just logs the OTP to console, active under `dev`/`test`/
-  `local` profiles only. Swap in Termii/Africa's Talking by implementing `SmsService` with a
-  `@Profile("prod")` (or whatever your prod profile is named).
-- Rate limiting on OTP request endpoints
-- Idempotency guard against double-tapped checkout initiate
-- Admin/support tooling for reviewing `NEEDS_RECONCILIATION` transactions
-- Mobile client wiring (deep links, secure token storage, refresh-on-401)
+| Area | Tools |
+|---|---|
+| Language | Java 21 |
+| Framework | Spring Boot 3.3 (Web, WebFlux client, Data JPA, Security, Validation) |
+| Database | PostgreSQL |
+| Auth | JWT (jjwt) |
+| Payments | Paystack, Xpress Payments biller API |
+| Hosting | Docker on Render |
 
 ## Project structure
 
 ```
 src/main/java/com/payxpress/
-├── PayxpressBillerApiApplication.java
-├── model/          — entities + enums (User, OtpCode, UserSession, VirtualAccount, Biller, PaymentTransaction)
-├── repository/      — Spring Data JPA repositories
-├── security/        — JwtService, JwtAuthFilter
-├── config/          — SecurityConfig, WebClientConfig
-├── auth/            — OtpService, SessionService, SmsService/MockSmsService, AuthController
-├── wallet/          — VirtualAccountService, WalletController
-├── biller/          — HMAC signer, XpressPay client, per-category services, dispatcher, sync, DTOs, controllers
-├── payment/         — PaystackService, PaymentConfirmationService, checkout/history/webhook controllers
-└── exception/        — GlobalExceptionHandler
+  auth/         OTP, sessions, sign up and login
+  security/     JWT service and filter
+  config/       security and HTTP client config
+  wallet/       wallet balance and accounts
+  biller/       biller catalogue, validation, HMAC signer, API client
+  payment/      Paystack checkout, webhook, confirmation, history
+  admin/        dashboard endpoints
+  model/        JPA entities
+  repository/   Spring Data repositories
+  exception/    global error handler
 ```
 
-## Endpoints implemented
+## Main endpoints
 
-- `POST /auth/signup/bvn`, `/signup/request-otp`, `/signup/verify-otp`
-- `POST /auth/login/request-otp`, `/login/verify-otp`
-- `POST /auth/refresh`, `/auth/logout`
-- `GET /billers`, `/billers/{categoryPath}`
-- `POST /billers/validate` (electricity, cable)
-- `POST /billers/payments/initiate`
-- `GET /billers/payments/history`, `/billers/payments/verify/{reference}`
-- `POST /webhooks/paystack`
-- `GET /wallet/balance`, `/wallet/accounts`
+| Method | Path | What it does |
+|---|---|---|
+| POST | `/auth/signup/request-otp`, `/auth/signup/verify-otp` | Sign up with a one time code |
+| POST | `/auth/login/request-otp`, `/auth/login/verify-otp` | Log in |
+| POST | `/auth/refresh`, `/auth/logout` | Refresh or end a session |
+| GET | `/billers`, `/billers/{category}` | Browse billers |
+| POST | `/billers/validate` | Check a meter or smart card number |
+| POST | `/billers/payments/initiate` | Start a Paystack checkout |
+| GET | `/billers/payments/verify/{reference}` | Confirm a payment after redirect |
+| GET | `/billers/payments/history` | Payment history |
+| POST | `/webhooks/paystack` | Paystack webhook |
+| GET | `/wallet/balance`, `/wallet/accounts` | Wallet info |
+
+## Run locally
+
+You need Java 21, Maven and PostgreSQL.
+
+```bash
+cp .env.example .env      # fill in your own local and test values
+mvn spring-boot:run
+```
+
+The API starts on http://localhost:8080. Or build the Docker image with `docker build -t payxpress-api .`
+
+## Configuration
+
+All secrets come from environment variables. See `.env.example` for the full list:
+`DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `JWT_SECRET`, `PAYSTACK_SECRET_KEY`, `PAYSTACK_CALLBACK_URL`, `XPRESSPAY_PUBLIC_KEY`, `XPRESSPAY_PRIVATE_KEY`, `XPRESSPAY_BASE_URL`, `RESEND_API_KEY`, `ADMIN_API_KEY`, `SPRING_PROFILE`.
+
+Real values live in `.env` or on the host, never in git.
+
+## Author
+
+**Ooreofeoluwa Popoola**, full stack software engineer (backend focused).
+[LinkedIn](https://www.linkedin.com/in/ooreofeoluwa-popoola-8260ba3b4/) · [GitHub](https://github.com/Ooreofe22)
